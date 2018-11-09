@@ -314,6 +314,7 @@
 #include <asm/cpu.h>
 #include <sys/id_space.h>
 #include <sys/hma.h>
+#include <time.h>
 
 #include "kvm_bitops.h"
 #include "kvm_vmx.h"
@@ -1963,9 +1964,9 @@ kvm_ioctl(dev_t dev, int cmd, intptr_t arg, int md, cred_t *cr, int *rv)
 		{ KVM_X86_SETUP_MCE, kvm_vcpu_ioctl_x86_setup_mce,
 		    sizeof (uint64_t) },
 		{ KVM_GET_MSRS, kvm_vcpu_ioctl_get_msrs,
-		    sizeof (struct kvm_msrs), B_TRUE },
+		    sizeof (struct msr_data), B_TRUE },
 		{ KVM_SET_MSRS, kvm_vcpu_ioctl_set_msrs,
-		    sizeof (struct kvm_msrs) },
+		    sizeof (struct msr_data) },
 		{ KVM_GET_MP_STATE, kvm_arch_vcpu_ioctl_get_mpstate,
 		    sizeof (struct kvm_mp_state), B_TRUE },
 		{ KVM_SET_MP_STATE, kvm_arch_vcpu_ioctl_set_mpstate,
@@ -2536,6 +2537,11 @@ kvm_ioctl(dev_t dev, int cmd, intptr_t arg, int md, cred_t *cr, int *rv)
 			break;
 		}
 
+		if (copyin(argp, &chip, sizeof chip) != 0) {
+			rval = EFAULT;
+			break;
+		}
+
 		rval = kvm_vm_ioctl_get_irqchip(kvmp, &chip);
 
 		if (rval == 0 && copyout(&chip, argp, sz) != 0) {
@@ -2585,6 +2591,54 @@ kvm_ioctl(dev_t dev, int cmd, intptr_t arg, int md, cred_t *cr, int *rv)
 		}
 
 		rval = kvm_vm_ioctl_get_dirty_log(kvmp, &log);
+		break;
+	}
+	case KVM_SET_CLOCK: {
+		struct kvm *kvmp;
+		struct kvm_clock_data user_ns;
+		int64_t now_ns;
+
+		rval = 0;
+		if (copyin(argp, &user_ns, sizeof(user_ns)) != 0) {
+			rval = EFAULT;
+			break;
+		}
+		if ((kvmp = ksp->kds_kvmp) == NULL) {
+			rval = EINVAL;
+			break;
+		}
+
+		//#now_ns = (int64_t)gethrtime();
+		//#kvmp->arch.kvmclock_offset = user_ns.clock - now_ns;
+		kvmp->arch.boot_hrtime = (hrtime_t)user_ns.clock;
+		break;
+	}
+	case KVM_GET_CLOCK: {
+		struct kvm *kvmp;
+		struct timespec boot_wallclock;
+		struct kvm_clock_data user_ns;
+		uint64_t bwc_ns;
+
+		if ((kvmp = ksp->kds_kvmp) == NULL) {
+			rval = EINVAL;
+			break;
+		}
+
+		//timespec_get(&now, TIME_UTC);
+		////clock_gettime(CLOCK_REALTIME, &now);
+		// Convert timespec to nanoseconds
+		boot_wallclock = kvmp->arch.boot_wallclock;
+		bwc_ns = boot_wallclock.tv_sec*1000000000 + boot_wallclock.tv_sec;
+		//#now_ns = (int64_t)gethrtime();
+		//#user_ns.clock = kvmp->arch.kvmclock_offset + now_ns;
+		user_ns.clock = (uint64_t)kvmp->arch.boot_hrtime;
+		user_ns.flags = 0;
+		DTRACE_PROBE1(janci_kvm_boot_hrtime, uint64_t, (uint64_t)user_ns.clock);
+		DTRACE_PROBE1(janci_kvm_boot_wallclock, uint64_t, (uint64_t)bwc_ns);
+
+		rval = 0;
+		if (copyout(&user_ns, argp, sizeof(user_ns)) != 0)
+			rval = EFAULT;
 		break;
 	}
 	case KVM_NMI: {
