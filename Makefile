@@ -58,7 +58,7 @@ KERNEL_CPPFLAGS = \
 	-I$(KERNEL_SOURCE)/usr/src/uts/common \
 	-I$(KERNEL_SOURCE)/usr/src/uts/intel \
 	-I$(KERNEL_SOURCE)/usr/src/uts/i86pc \
-	-I/usr/include
+	-I$(PROTO_AREA)/usr/include
 
 DMOD_CPPFLAGS = \
 	$(ALWAYS_CPPFLAGS) \
