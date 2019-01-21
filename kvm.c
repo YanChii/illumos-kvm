@@ -2596,7 +2596,9 @@ kvm_ioctl(dev_t dev, int cmd, intptr_t arg, int md, cred_t *cr, int *rv)
 	case KVM_SET_CLOCK: {
 		struct kvm *kvmp;
 		struct kvm_clock_data user_ns;
-		int64_t now_ns;
+		//uint64_t ns;
+		//struct timespec wallcl;
+		uint64_t now_ns;
 
 		rval = 0;
 		if (copyin(argp, &user_ns, sizeof(user_ns)) != 0) {
@@ -2608,16 +2610,24 @@ kvm_ioctl(dev_t dev, int cmd, intptr_t arg, int md, cred_t *cr, int *rv)
 			break;
 		}
 
-		//#now_ns = (int64_t)gethrtime();
+		now_ns = (int64_t)gethrtime();
 		//#kvmp->arch.kvmclock_offset = user_ns.clock - now_ns;
-		kvmp->arch.boot_hrtime = (hrtime_t)user_ns.clock;
+		//kvmp->arch.boot_hrtime = (hrtime_t)user_ns.clock;
+		//wallcl.tv_sec = ((uint64_t)user_ns.clock) / 1000000000;
+		//wallcl.tv_nsec = ((uint64_t)user_ns.clock) - ((uint64_t)((long)wallcl.tv_sec * 1000000000));
+		//kvmp->arch.boot_wallclock = wallcl;
+		kvmp->arch.boot_hrtime = now_ns - user_ns.clock;
+		//DTRACE_PROBE1(janci_kvm_set_boot_wallclock, uint64_t, (uint64_t)user_ns.clock);
+		//DTRACE_PROBE1(janci_kvm_set_boot_wallclock_sec, long, (long)kvmp->arch.boot_wallclock.tv_sec);
+		//DTRACE_PROBE1(janci_kvm_set_boot_wallclock_nsec, long, (long)kvmp->arch.boot_wallclock.tv_nsec);
 		break;
 	}
 	case KVM_GET_CLOCK: {
 		struct kvm *kvmp;
 		struct timespec boot_wallclock;
 		struct kvm_clock_data user_ns;
-		uint64_t bwc_ns;
+		uint64_t now_ns;
+		//uint64_t bwc_ns;
 
 		if ((kvmp = ksp->kds_kvmp) == NULL) {
 			rval = EINVAL;
@@ -2627,14 +2637,17 @@ kvm_ioctl(dev_t dev, int cmd, intptr_t arg, int md, cred_t *cr, int *rv)
 		//timespec_get(&now, TIME_UTC);
 		////clock_gettime(CLOCK_REALTIME, &now);
 		// Convert timespec to nanoseconds
-		boot_wallclock = kvmp->arch.boot_wallclock;
-		bwc_ns = boot_wallclock.tv_sec*1000000000 + boot_wallclock.tv_sec;
-		//#now_ns = (int64_t)gethrtime();
+		//boot_wallclock = kvmp->arch.boot_wallclock;
+		//bwc_ns = ((uint64_t)boot_wallclock.tv_sec)*1000000000 + ((uint64_t)boot_wallclock.tv_nsec);
+		now_ns = (int64_t)gethrtime();
 		//#user_ns.clock = kvmp->arch.kvmclock_offset + now_ns;
-		user_ns.clock = (uint64_t)kvmp->arch.boot_hrtime;
+		user_ns.clock = now_ns - (uint64_t)kvmp->arch.boot_hrtime;
+		//user_ns.clock = bwc_ns;
 		user_ns.flags = 0;
-		DTRACE_PROBE1(janci_kvm_boot_hrtime, uint64_t, (uint64_t)user_ns.clock);
-		DTRACE_PROBE1(janci_kvm_boot_wallclock, uint64_t, (uint64_t)bwc_ns);
+		DTRACE_PROBE1(janci_kvm_get_boot_hrtime, uint64_t, (uint64_t)kvmp->arch.boot_hrtime);
+		//DTRACE_PROBE1(janci_kvm_get_boot_wallclock, uint64_t, (uint64_t)bwc_ns);
+		//DTRACE_PROBE1(janci_kvm_get_boot_wallclock_sec, long, (long)boot_wallclock.tv_sec);
+		//DTRACE_PROBE1(janci_kvm_get_boot_wallclock_nsec, long, (long)boot_wallclock.tv_nsec);
 
 		rval = 0;
 		if (copyout(&user_ns, argp, sizeof(user_ns)) != 0)
