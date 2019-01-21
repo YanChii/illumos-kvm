@@ -727,6 +727,7 @@ kvm_write_guest_time(struct kvm_vcpu *v)
 	pvclock = (void *)((uintptr_t)page_address(page) +
 	    offset_in_page(vcpu->time_addr));
 	version = pvclock->version;
+	DTRACE_PROBE1(janci_write_guest_pvclock_before, struct pvclock_vcpu_time_info*, (struct pvclock_vcpu_time_info*)pvclock);
 
 	/*
 	 * A note from Linux upstream about the role of the 'version' field in
@@ -763,6 +764,7 @@ kvm_write_guest_time(struct kvm_vcpu *v)
 
 	kvm_release_page_dirty(page);
 	mark_page_dirty(v->kvm, vcpu->time_addr >> PAGESHIFT);
+	DTRACE_PROBE1(janci_write_guest_pvclock_after, struct pvclock_vcpu_time_info*, (struct pvclock_vcpu_time_info*)pvclock);
 }
 
 /*
