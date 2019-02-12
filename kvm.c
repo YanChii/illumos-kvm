@@ -2625,7 +2625,6 @@ kvm_ioctl(dev_t dev, int cmd, intptr_t arg, int md, cred_t *cr, int *rv)
 		now_ns = gethrtime();
 		user_ns.clock = (uint64_t)(now_ns - kvmp->arch.boot_hrtime);
 		user_ns.flags = 0;
-		DTRACE_PROBE1(janci_kvm_get_boot_hrtime, uint64_t, (uint64_t)kvmp->arch.boot_hrtime);
 
 		rval = 0;
 		if (copyout(&user_ns, argp, sizeof(user_ns)) != 0)
