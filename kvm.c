@@ -2537,7 +2537,7 @@ kvm_ioctl(dev_t dev, int cmd, intptr_t arg, int md, cred_t *cr, int *rv)
 			break;
 		}
 
-		if (copyin(argp, &chip, sizeof chip) != 0) {
+		if (copyin(argp, &chip, sizeof (chip)) != 0) {
 			rval = EFAULT;
 			break;
 		}
@@ -2599,7 +2599,7 @@ kvm_ioctl(dev_t dev, int cmd, intptr_t arg, int md, cred_t *cr, int *rv)
 		hrtime_t now_ns;
 
 		rval = 0;
-		if (copyin(argp, &user_ns, sizeof(user_ns)) != 0) {
+		if (copyin(argp, &user_ns, sizeof (user_ns)) != 0) {
 			rval = EFAULT;
 			break;
 		}
@@ -2607,8 +2607,20 @@ kvm_ioctl(dev_t dev, int cmd, intptr_t arg, int md, cred_t *cr, int *rv)
 			rval = EINVAL;
 			break;
 		}
+		if (user_ns.clock > INT64_MAX) {
+			// refuse value that cannot be converted to hrtime_t
+			rval = EINVAL;
+			break;
+		}
 
 		now_ns = gethrtime();
+
+		if ((hrtime_t)user_ns.clock > now_ns) {
+			// VM boot time cannot be in the future
+			rval = EINVAL;
+			break;
+		}
+
 		kvmp->arch.boot_hrtime = now_ns - (hrtime_t)user_ns.clock;
 		break;
 	}
@@ -2627,7 +2639,7 @@ kvm_ioctl(dev_t dev, int cmd, intptr_t arg, int md, cred_t *cr, int *rv)
 		user_ns.flags = 0;
 
 		rval = 0;
-		if (copyout(&user_ns, argp, sizeof(user_ns)) != 0)
+		if (copyout(&user_ns, argp, sizeof (user_ns)) != 0)
 			rval = EFAULT;
 		break;
 	}
