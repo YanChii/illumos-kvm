@@ -314,7 +314,7 @@
 #include <asm/cpu.h>
 #include <sys/id_space.h>
 #include <sys/hma.h>
-#include <time.h>
+#include <sys/time.h>
 
 #include "kvm_bitops.h"
 #include "kvm_vmx.h"
@@ -1964,9 +1964,9 @@ kvm_ioctl(dev_t dev, int cmd, intptr_t arg, int md, cred_t *cr, int *rv)
 		{ KVM_X86_SETUP_MCE, kvm_vcpu_ioctl_x86_setup_mce,
 		    sizeof (uint64_t) },
 		{ KVM_GET_MSRS, kvm_vcpu_ioctl_get_msrs,
-		    sizeof (struct msr_data), B_TRUE },
+		    sizeof (struct kvm_msrs), B_TRUE },
 		{ KVM_SET_MSRS, kvm_vcpu_ioctl_set_msrs,
-		    sizeof (struct msr_data) },
+		    sizeof (struct kvm_msrs) },
 		{ KVM_GET_MP_STATE, kvm_arch_vcpu_ioctl_get_mpstate,
 		    sizeof (struct kvm_mp_state), B_TRUE },
 		{ KVM_SET_MP_STATE, kvm_arch_vcpu_ioctl_set_mpstate,
